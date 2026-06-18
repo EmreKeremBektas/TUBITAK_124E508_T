@@ -7,24 +7,18 @@
   <meta name="keywords" content="Hierarchical Reinforcement Learning, Unsupervised Skill Discovery, Autonomous Driving, HRL">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Hierarchical Reinforcement Learning with Unsupervised Skill Discovery for Autonomous Driving</title>
-
   <!-- Global site tag (gtag.js) - Google Analytics -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-PYVRSFMDRL"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
-
     function gtag() {
       dataLayer.push(arguments);
     }
-
     gtag('js', new Date());
-
     gtag('config', 'G-PYVRSFMDRL');
   </script>
-
   <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro"
         rel="stylesheet">
-
   <link rel="stylesheet" href="./static/css/bulma.min.css">
   <link rel="stylesheet" href="./static/css/bulma-carousel.min.css">
   <link rel="stylesheet" href="./static/css/bulma-slider.min.css">
@@ -33,7 +27,14 @@
         href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
   <link rel="stylesheet" href="./static/css/index.css">
   <link rel="icon" href="./static/images/favicon.svg">
-
+  <!-- MathJax for equations -->
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']] },
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
   <script defer src="./static/js/fontawesome.all.min.js"></script>
   <script src="./static/js/bulma-carousel.min.js"></script>
@@ -41,9 +42,6 @@
   <script src="./static/js/index.js"></script>
 </head>
 <body>
-
-
-
 <section class="hero">
   <div class="hero-body">
     <div class="container is-max-desktop">
@@ -54,11 +52,9 @@
             <span class="author-block">Yıldıray Yıldız<sup>1</sup>,</span>
             <span class="author-block">Emre Bektaş<sup>1</sup></span>
           </div>
-
           <div class="is-size-5 publication-authors">
             <span class="author-block"><sup>1</sup>Bilkent University</span>
           </div>
-
           <div class="column has-text-centered">
             <div class="publication-links">
               <!-- PDF Link. -->
@@ -83,27 +79,20 @@
               </span>
               <!-- Code Link. -->
               <span class="link-block">
-                <!-- TODO: Update href with actual GitHub repo link -->
-                <a class="external-link button is-normal is-rounded is-dark" disabled style="pointer-events: none; opacity: 0.5;">
+                <a class="external-link button is-normal is-rounded is-dark" href="https://github.com/EmreKeremBektas/TUBITAK_124E508_T">
                   <span class="icon">
                       <i class="fab fa-github"></i>
                   </span>
-                  <span>Code (Coming Soon)</span>
+                  <span>Code</span>
                 </a>
               </span>
             </div>
-
           </div>
         </div>
       </div>
     </div>
   </div>
 </section>
-
-
-
-
-
 <section class="hero is-light is-small">
   <div class="hero-body">
   <div class="container is-max-desktop">
@@ -125,44 +114,109 @@
       </div>
     </div>
     <!--/ Abstract. -->
-
   </div>
   </div>
 </section>
-
-
 <section class="section">
   <div class="container is-max-desktop">
     <div class="columns is-centered">
       <div class="column is-full-width">
-        
-        <h2 class="title is-3">Title</h2>
+
+        <!-- Simulation Environment. -->
+        <h2 class="title is-3">Simulation Environment</h2>
         <div class="content has-text-justified">
           <p>
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+            We build a comprehensive traffic simulator on top of the <a href="https://eclipse.dev/sumo/">SUMO</a> package, designed so that many distinct road topologies can be exercised within a single environment. In addition to the highway, on-ramp merge, and intersection scenarios outlined in the project proposal, we also added a roundabout scenario, providing the infrastructure needed to study the variety of traffic situations found in the literature.
+          </p>
+          <p>
+            Rather than hard-coding a handful of fixed traffic conditions, we exploit the flexibility of SUMO by defining traffic as a set of flows between road segments. Each flow is parameterized by its start and end edges, a mean speed and speed standard deviation, an initial vehicle count, and a per-step spawn probability. Because these parameters are exposed as plain configuration, large batches of experiments spanning many traffic-density and behavior combinations can be generated automatically and swept in simple loops.
+          </p>
+          <p>
+            By default, SUMO drives surrounding vehicles with the collision-free Krauss car-following model. While safe, this prevents our learning agent from ever experiencing the consequences of its own mistakes, weakening the reward signal. To address this we support two regimes: tuning SUMO's built-in safety parameters, and disabling the internal safety protocols entirely in favor of a custom surrounding-vehicle controller. The latter is a time-to-collision (TTC) based decision rule that chooses between <em>maintain</em>, <em>accelerate</em>, <em>decelerate</em>, and <em>hard-decelerate</em> actions, with stochastic accelerations sampled from Laplace and exponential distributions to mimic realistic, imperfect human driving.
           </p>
         </div>
 
-        <h2 class="title is-3">Title</h2>
+        <!-- Method. -->
+        <h2 class="title is-3">Hierarchical Learning with Unsupervised Skill Discovery</h2>
         <div class="content has-text-justified">
           <p>
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+            At the lower level of the hierarchy, the agent autonomously discovers a repertoire of driving behaviors through <strong>unsupervised skill discovery</strong>, with no hand-designed objectives. We adopt <a href="https://arxiv.org/abs/1802.06070">DIAYN</a> (Diversity Is All You Need), an information-theoretic framework that maximizes the mutual information between a sampled skill \(z\) and the states \(s\) the agent visits, while keeping actions as uninformative about the skill as possible:
+          </p>
+          <p>
+            \[ \max\; I(z; s) - I(a; z \mid s), \qquad I(z; s) = H(z) - H(z \mid s). \]
+          </p>
+          <p>
+            With a uniform prior over \(K\) skills, \(p(z) = 1/K\), the entropy \(H(z)\) is constant, so the objective reduces to minimizing \(H(z \mid s)\). This is realized by training a discriminator network \(q_\phi(z \mid s)\) that predicts which skill is active from the current state. Its log-probability defines the intrinsic reward given to the policy:
+          </p>
+          <p>
+            \[ r_z(s) = \log q_\phi(z \mid s) - \log p(z). \]
+          </p>
+          <p>
+            When the discriminator confidently and correctly identifies the active skill, \(q_\phi(z \mid s) \to 1\) and the reward attains its maximum value \(\log K\); an incorrect prediction drives the reward negative. This encourages every skill to seek out its own distinguishable region of the state space. The discriminator itself is trained in the opposite direction by minimizing the negative log-likelihood of the true skill label,
+          </p>
+          <p>
+            \[ \mathcal{L}_\phi = -\,\mathbb{E}_{s,z}\big[\log q_\phi(z \mid s)\big], \]
+          </p>
+          <p>
+            so that policy and discriminator form a mutually reinforcing loop. The skill policies are optimized with Soft Actor-Critic (SAC), whose entropy-regularized objective encourages exploration and prevents premature convergence:
+          </p>
+          <p>
+            \[ J(\pi) = \mathbb{E}\!\left[\sum_{t} \gamma^{t}\, r_z(s_t) + \alpha\, H\big(\pi(\cdot \mid s_t, z)\big)\right], \]
+          </p>
+          <p>
+            where \(\alpha\) is the temperature, \(\gamma\) the discount factor, and \(H(\pi)\) the policy entropy.
+          </p>
+          <p>
+            At each simulation step the agent receives an 11-dimensional normalized observation vector capturing its own speed, distances and relative speeds to the nearest leading and conflict-point vehicles, and the feasibility and geometry of a left lane change. From these observations each skill produces continuous acceleration and lane-change commands through a deep network. As a result, a skill is far richer than a simple "speed up when clear, slow down when blocked" rule: a single skill can, for example, accelerate on an open road while also yielding to a vehicle merging from the left. A higher-level policy then learns to invoke these complex skills in the right context to accomplish driving tasks.
           </p>
         </div>
 
-        <h2 class="title is-3">Title</h2>
+        <!-- Results. -->
+        <h2 class="title is-3">Discovered Skills and Evaluation</h2>
         <div class="content has-text-justified">
           <p>
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+            We train and evaluate skill policies under two regimes. In the first, SUMO's internal safety protocols are disabled and surrounding vehicles follow our custom TTC-based controller, so the agent genuinely experiences collisions and the associated penalties. In the second, the default Krauss model is kept, placing the agent in a more controlled, collision-averse environment. In the Krauss setting we further separate training into light, medium, and dense traffic profiles, allowing us to study how skill discovery and behavioral separability change with traffic density.
+          </p>
+          <p>
+            Skills are assessed quantitatively, not just from video. For each skill \(z\) we measure the collision rate \(C_z\), the route-completion rate \(R_z\), the average speed \(\bar{v}_z\), and the minimum following distance \(d^{\min}_z\) over repeated episodes. These metrics reveal a clear safety&ndash;progress trade-off across the discovered skills: cautious skills achieve high completion rates and large following distances at lower speed, while aggressive skills reach the highest average speeds but collide far more often. One skill was so conservative that it almost never collided yet failed to complete any route.
+          </p>
+          <div class="content has-text-centered">
+            <table class="table is-bordered is-striped is-narrow is-hoverable" style="margin: 0 auto;">
+              <thead>
+                <tr>
+                  <th>Skill</th>
+                  <th>\(C_z\)</th>
+                  <th>\(R_z\)</th>
+                  <th>\(\bar{v}_z\) (m/s)</th>
+                  <th>\(d^{\min}_z\) (m)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>0</td><td>0.300</td><td>0.700</td><td>7.96</td><td>18.86</td></tr>
+                <tr><td>1</td><td>0.400</td><td>0.600</td><td>8.59</td><td>13.53</td></tr>
+                <tr><td>2</td><td>0.700</td><td>0.300</td><td>9.76</td><td>10.86</td></tr>
+                <tr><td>3</td><td>0.700</td><td>0.300</td><td>9.71</td><td>11.64</td></tr>
+                <tr><td>4</td><td>0.600</td><td>0.400</td><td>9.35</td><td>16.58</td></tr>
+                <tr><td>5</td><td>0.500</td><td>0.500</td><td>9.88</td><td>11.83</td></tr>
+                <tr><td>6</td><td>0.450</td><td>0.550</td><td>7.24</td><td>12.02</td></tr>
+                <tr><td>7</td><td>0.150</td><td>0.000</td><td>4.07</td><td>13.82</td></tr>
+                <tr><td>8</td><td>0.250</td><td>0.750</td><td>7.63</td><td>19.42</td></tr>
+                <tr><td>9</td><td>0.400</td><td>0.050</td><td>5.61</td><td>14.00</td></tr>
+              </tbody>
+            </table>
+            <p class="is-size-7" style="margin-top: 0.5rem;">
+              Per-skill quantitative metrics (\(N = 20\) episodes, route \(-E1 \to E2\), low traffic).
+            </p>
+          </div>
+          <p>
+            Taken together, the results confirm that the DIAYN framework can produce a spectrum of skills with genuinely different speed&ndash;safety profiles. At the same time, a sizable subset of skills converged to similar behavior patterns, indicating that increasing behavioral diversity, tuning the number of skills, and re-training with different parameters are the key directions for the next reporting period.
           </p>
         </div>
-        
+
       </div>
     </div>
   </div>
 </section>
-
-
 <section class="section" id="BibTeX">
   <div class="container is-max-desktop content">
     <h2 class="title">BibTeX</h2>
@@ -174,8 +228,6 @@
 }</code></pre>
   </div>
 </section>
-
-
 <footer class="footer">
   <div class="container">
     <div class="columns is-centered">
@@ -191,6 +243,5 @@
     </div>
   </div>
 </footer>
-
 </body>
 </html>
